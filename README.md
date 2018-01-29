@@ -1,7 +1,14 @@
 ## SpringBoot Demo using Openid-Connect
 
-`frontend` - uses oauth/openid-connect - public access type, requires user login
-`backend` - uses oauth bearer token (JWT)
+Demo for OpenShift, SSO/Keycloak, SpringBoot, Openid-Connect user Login, Bearer Token for Service protection.
+
+`frontend` - pod uses oauth/openid-connect - public access type, requires user login
+`backend` - pod uses oauth bearer token (JWT) passsed from frontend
+
+Note: the backend service does not need to be exposed as a route, only for testing. Frontend is configured using the Service:
+```
+service.url=http://backend:80/protected
+```
 
 ### Deploying to OpenShift
 
@@ -110,3 +117,6 @@ oc env dc/sso -e "JAVA_OPTS_APPEND=-Dkeycloak.migration.action=export -Dkeycloak
 oc scale --replicas=1 dc sso
 oc rsync sso-3-rnnlw:/tmp/springbootssodemo-realm.json .
 ```
+
+### TTD
+- Add in ssl certs (perhaps using OCP Client Cert Generation Service) - https://docs.openshift.com/container-platform/3.7/dev_guide/secrets.html#service-serving-certificate-secrets
