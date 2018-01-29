@@ -1,6 +1,6 @@
 ## SpringBoot Demo using Openid-Connect
 
-`frontend` - uses public access type, requires user login
+`frontend` - uses oauth/openid-connect - public access type, requires user login
 `backend` - uses oauth bearer token (JWT)
 
 ### Deploying to OpenShift
@@ -36,7 +36,15 @@ oc expose svc frontend
 ```
 
 Test:
+```
+Browse to http://frontend-bearersso.192.168.136.2.nip.io/
+Select 'My products' link
+login: testuser / password
+logout
 
+Browsing directly to service endpoint will give 401 unless logged in: 
+http://backend-bearersso.192.168.136.2.nip.io/protected
+```
 
 ### The fiddly bits
 
