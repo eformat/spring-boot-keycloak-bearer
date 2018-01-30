@@ -131,3 +131,13 @@ oc rsync sso-3-rnnlw:/tmp/springbootssodemo-realm.json .
 
 ### TTD
 - Make SpringBoot SSL truststore work when calling SSO server.
+```
+-- SB application.properties
+# (development) only need - SSO server has its own self-signed cert
+keycloak.disable-trust-manager=true
+keycloak.allow-any-hostname=true
+```
+- we're using a fabric8 image to generate java keystore, not sure if we have other options - the SSO image used in the blog is not quite the same approach (fmp-autotls cmd line option not exposed?): https://developers.redhat.com/blog/2017/11/22/dynamically-creating-java-keystores-openshift/
+```
+<pemToJKSInitContainerImage>jimmidyson/pemtokeystore:latest</pemToJKSInitContainerImage>
+```
