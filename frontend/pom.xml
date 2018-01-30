@@ -17,7 +17,7 @@
         <java.version>1.8</java.version>
         <fabric8.version>2.2.170.redhat-000019</fabric8.version>
         <spring-boot.version>1.4.1.RELEASE</spring-boot.version>
-        <fabric8.maven.plugin.version>3.1.80.redhat-000019</fabric8.maven.plugin.version>
+        <fabric8.maven.plugin.version>3.5.34</fabric8.maven.plugin.version>
         <maven-compiler-plugin.version>3.6.1</maven-compiler-plugin.version>
         <maven-surefire-plugin.version>2.18.1</maven-surefire-plugin.version>
         <keycloak.version>3.1.0.Final</keycloak.version>
@@ -109,6 +109,16 @@
                     </execution>
                 </executions>
                 <configuration>
+                    <enricher>
+                        <includes>
+                            <include>fmp-autotls</include>
+                        </includes>
+                        <config>
+                            <fmp-autotls>
+                                <pemToJKSInitContainerImage>jimmidyson/pemtokeystore:latest</pemToJKSInitContainerImage>
+                            </fmp-autotls>
+                        </config>
+                    </enricher>
                     <resources>
                         <labels>
                             <all>

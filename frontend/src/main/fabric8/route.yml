@@ -1,0 +1,10 @@
+spec:
+  port:
+    targetPort: https
+  tls:
+    termination: reencrypt
+  to:
+    kind: Service
+    name: frontend
+    weight: 100
+  wildcardPolicy: None

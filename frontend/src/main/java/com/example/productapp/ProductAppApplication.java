@@ -1,6 +1,9 @@
 package com.example.productapp;
 
-import org.keycloak.KeycloakPrincipal;
+import org.apache.http.conn.ssl.NoopHostnameVerifier;
+import org.apache.http.impl.client.CloseableHttpClient;
+import org.apache.http.impl.client.HttpClients;
+import org.apache.http.ssl.SSLContextBuilder;
 import org.keycloak.KeycloakSecurityContext;
 import org.keycloak.adapters.KeycloakConfigResolver;
 import org.keycloak.adapters.springboot.KeycloakSpringBootConfigResolver;
@@ -25,9 +28,7 @@ import org.springframework.security.config.annotation.authentication.builders.Au
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.core.authority.mapping.SimpleAuthorityMapper;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.session.SessionRegistryImpl;
-import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
 import org.springframework.security.web.authentication.session.RegisterSessionAuthenticationStrategy;
 import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.stereotype.Controller;
@@ -37,10 +38,14 @@ import org.springframework.web.context.WebApplicationContext;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+import javax.net.ssl.SSLContext;
+import javax.net.ssl.TrustManager;
+import javax.net.ssl.TrustManagerFactory;
 import javax.servlet.ServletException;
 import javax.servlet.http.HttpServletRequest;
 import javax.validation.constraints.NotNull;
-import java.security.Principal;
+import java.io.*;
+import java.security.*;
 import java.util.Arrays;
 import java.util.List;
 
@@ -103,6 +108,14 @@ class ProductController {
 @ComponentScan(basePackageClasses = KeycloakSecurityComponents.class)
 class SecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
 
+    @NotNull
+    @Value("${keycloak.truststore}")
+    private String keyStoreFile;
+
+    @NotNull
+    @Value("${keycloak.truststore-password}")
+    private String keyStorePassword;
+
     @Autowired
     public KeycloakClientRequestFactory keycloakClientRequestFactory;
 
@@ -133,6 +146,33 @@ class SecurityConfig extends KeycloakWebSecurityConfigurerAdapter {
     @Bean
     @Scope(ConfigurableBeanFactory.SCOPE_PROTOTYPE)
     public KeycloakRestTemplate keycloakRestTemplate() {
+        // Load generated self signed cert keystore for template call
+        try {
+            File initialFile = new File(keyStoreFile);
+            InputStream keyStoreInputStream = new FileInputStream(initialFile);
+            if (keyStoreInputStream == null) {
+                throw new FileNotFoundException("Could not find file named '" + keyStoreFile);
+            }
+            KeyStore keystore = KeyStore.getInstance(KeyStore.getDefaultType());
+            keystore.load(keyStoreInputStream, keyStorePassword.toCharArray());
+            SSLContext sc = new SSLContextBuilder()
+                    .loadTrustMaterial(keystore, (certificate, authType) -> true).build();
+            CloseableHttpClient client = HttpClients.custom()
+                    .setSSLContext(sc)
+                    .setSSLHostnameVerifier(new NoopHostnameVerifier())
+                    .build();
+            keycloakClientRequestFactory.setHttpClient(client);
+
+        } catch (NoSuchAlgorithmException e) {
+            e.printStackTrace();
+        } catch (KeyManagementException e) {
+            e.printStackTrace();
+        } catch (KeyStoreException e) {
+            e.printStackTrace();
+        } catch (IOException | GeneralSecurityException e) {
+            throw new RuntimeException(e);
+        }
+        System.out.println(">>> Loaded KeycloakRestTemplate with keystore");
         return new KeycloakRestTemplate(keycloakClientRequestFactory);
     }
 

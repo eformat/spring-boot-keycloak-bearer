@@ -1,13 +1,25 @@
 ## SpringBoot Demo using Openid-Connect
 
-Demo for OpenShift, SSO/Keycloak, SpringBoot, Openid-Connect user Login, Bearer Token for Service protection.
+Demo for OpenShift, SSO/Keycloak, SpringBoot, Openid-Connect user Login, Bearer Token for Service protection.  Uses OCP Client Cert Generation Service for springboot services.
 
 `frontend` - pod uses oauth/openid-connect - public access type, requires user login
 `backend` - pod uses oauth bearer token (JWT) passsed from frontend
 
 Note: the backend service does not need to be exposed as a route, only for testing. Frontend is configured using the Service:
 ```
-service.url=http://backend:80/protected
+service.url=https://backend:8443/protected
+```
+
+Note: There is Some configuration for your environment that will need to be modified to suit your IP Address (work in progress to remove this)
+
+```
+-- springboot application.properties (AUTH Server)
+keycloak.auth-server-url=https://secure-sso-rh-sso.192.168.136.2.nip.io/auth
+
+-- SSO Clients Configuration (login to SSO web to change Realm -> Clients)
+-- frontend
+Valid Redirect URIs: https://frontend-bearersso.192.168.136.2.nip.io/*
+Web Origins: https://frontend-bearersso.192.168.136.2.nip.io
 ```
 
 ### Deploying to OpenShift
@@ -34,23 +46,22 @@ oc new-project bearersso --display-name='SpringBootDemo Bearer SSO' --descriptio
 oc policy add-role-to-user view --serviceaccount=default -n $(oc project -q)
 cd ~/git/spring-boot-keycloak-bearer/backend
 mvn clean fabric8:deploy
--- (Optional for testing)
-oc expose svc backend
 
 cd ~/git/spring-boot-keycloak-bearer/frontend
 mvn clean fabric8:deploy
-oc expose svc frontend
 ```
+
+`Note:` the `backed` Route is only required for testing and can be deleted.
 
 Test:
 ```
-Browse to http://frontend-bearersso.192.168.136.2.nip.io/
+Browse to https://frontend-bearersso.192.168.136.2.nip.io/
 Select 'My products' link
 login: testuser / password
 logout
 
 Browsing directly to service endpoint will give 401 unless logged in: 
-http://backend-bearersso.192.168.136.2.nip.io/protected
+https://backend-bearersso.192.168.136.2.nip.io/protected
 ```
 
 ### The fiddly bits
@@ -89,7 +100,7 @@ KC_PASSWORD=password
 KC_CLIENT=frontend
 #KC_CLIENT_SECRET=50227c10-42c5-40b7-bc40-e0d83567031d
 #         -d "client_secret=$KC_CLIENT_SECRET" \
-KC_URL=http://sso-rh-sso.192.168.136.2.nip.io/auth
+KC_URL=https://secure-sso-rh-sso.192.168.136.2.nip.io/auth
 
 # Request Tokens for credentials
 KC_RESPONSE=$( \
@@ -106,8 +117,8 @@ KC_ACCESS_TOKEN=$(echo $KC_RESPONSE| jq -r .access_token)
 KC_ID_TOKEN=$(echo $KC_RESPONSE| jq -r .id_token)
 KC_REFRESH_TOKEN=$(echo $KC_RESPONSE| jq -r .refresh_token)
 
-curl -H "Authorization: Bearer $KC_ACCESS_TOKEN" \
-http://backend-bearersso.192.168.136.2.nip.io/protected
+curl -k -H "Authorization: Bearer $KC_ACCESS_TOKEN" \
+https://backend-bearersso.192.168.136.2.nip.io/protected
 ```
 
 ### Export Previously configured SSO Config
@@ -119,4 +130,4 @@ oc rsync sso-3-rnnlw:/tmp/springbootssodemo-realm.json .
 ```
 
 ### TTD
-- Add in ssl certs (perhaps using OCP Client Cert Generation Service) - https://docs.openshift.com/container-platform/3.7/dev_guide/secrets.html#service-serving-certificate-secrets
+- Make SpringBoot SSL truststore work when calling SSO server.
